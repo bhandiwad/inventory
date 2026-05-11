@@ -72,7 +72,7 @@ npm run catalog:seed
 
 Then apply `catalog/clean_seed.sql`.
 
-## Demo Tenant and Users
+## Pilot Tenant and Users
 
 Create one tenant through onboarding, then add memberships:
 
