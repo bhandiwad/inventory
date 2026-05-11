@@ -1,0 +1,31 @@
+{
+  "app": {
+    "name": "SMTC Inventory",
+    "stockOut": "",
+    "stockIn": "",
+    "adjust": "",
+    "return": "",
+    "damage": "",
+    "search": "",
+    "offline": "",
+    "lastSynced": "",
+    "pending": "",
+    "undo": "",
+    "negativeWarning": "",
+    "stockNotSet": "",
+    "addCustom": "",
+    "viewerReadOnly": "",
+    "micDisabled": "",
+    "users": "",
+    "reports": "",
+    "catalog": "",
+    "currentStock": "",
+    "transactions": "",
+    "lowStock": "",
+    "confirm": "",
+    "quantity": "",
+    "note": "",
+    "export": "",
+    "importAdjustment": ""
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "app": {
+    "name": "SMTC Inventory",
+    "stockOut": "Stock Out",
+    "stockIn": "Stock In",
+    "adjust": "Adjust",
+    "return": "Return",
+    "damage": "Damage",
+    "search": "Search products",
+    "offline": "Offline",
+    "lastSynced": "Last synced",
+    "pending": "pending",
+    "undo": "Undo",
+    "negativeWarning": "This will take stock below zero.",
+    "stockNotSet": "stock not set",
+    "addCustom": "Add custom product",
+    "viewerReadOnly": "Viewer access is read-only",
+    "micDisabled": "Voice is coming in Phase 2",
+    "users": "Users",
+    "reports": "Reports",
+    "catalog": "Catalog",
+    "currentStock": "Current Stock",
+    "transactions": "Transactions",
+    "lowStock": "Low Stock",
+    "confirm": "Confirm",
+    "quantity": "Quantity",
+    "note": "Note",
+    "export": "Export",
+    "importAdjustment": "Import adjustment"
+  }
+}
