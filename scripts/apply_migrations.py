@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -13,6 +14,7 @@ FILES = [
     "supabase/migrations/0004_phase1_pilot_stock.sql",
     "supabase/migrations/0005_product_overrides.sql",
     "supabase/migrations/0006_chat_source.sql",
+    "supabase/migrations/0007_auth_tenant_invite_acceptance.sql",
     "catalog/raw_catalog_rows.sql",
     "catalog/clean_seed.sql",
 ]
@@ -41,7 +43,8 @@ def main() -> int:
     host, port, user, password, dbname = parse_postgres_url(read_env_value("SUPABASE_DB_URL"))
     env = os.environ.copy()
     env["PGPASSWORD"] = password
-    for file in FILES:
+    files = sys.argv[1:] or FILES
+    for file in files:
         if not Path(file).exists():
             continue
         print(f"Applying {file}")

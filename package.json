@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "bash scripts/dev_clean.sh",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
