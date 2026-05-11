@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findVoiceCandidates, parseVoiceIntent } from "../../src/lib/voice";
+import { findVoiceCandidates, parseVoiceIntent, voiceProductQuery } from "../../src/lib/voice";
 import { seedProducts } from "../../src/lib/seedProducts";
 
 describe("voice interpretation", () => {
@@ -21,5 +21,9 @@ describe("voice interpretation", () => {
     expect(intent.type).toBe("purchase");
     expect(intent.qty).toBe(3);
     expect(candidates[0].product.display_name).toContain("SWIFT");
+  });
+
+  it("removes command words before server-side candidate search", () => {
+    expect(voiceProductQuery("stock out two Breeza LLM pieces")).toBe("breeza llm");
   });
 });

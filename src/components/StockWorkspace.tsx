@@ -7,7 +7,7 @@ import { ChatControl } from "@/components/ChatControl";
 import { OfflineBadge } from "@/components/OfflineBadge";
 import { productMatches, useLocalStore } from "@/lib/localStore";
 import { canAdjustStock, canWriteStock } from "@/lib/permissions";
-import { findVoiceCandidates, parseVoiceIntent, transcribeWithSarvam } from "@/lib/voice";
+import { parseVoiceIntent, transcribeWithSarvam } from "@/lib/voice";
 import type { CommandSource, ProductCard, TransactionType, VoiceCandidate, VoiceIntent } from "@/lib/types";
 import { VoiceControl } from "@/components/VoiceControl";
 
@@ -24,7 +24,7 @@ export function StockWorkspace({
   stockInLabel: string;
   searchPlaceholder: string;
 }) {
-  const { addCustomProduct, addTransaction, backendMode, confirmVoiceLog, createVoiceLog, currentRole, products, setCurrentRole, statusMessage, transactions, undoTransaction } = useLocalStore();
+  const { addCustomProduct, addTransaction, backendMode, confirmVoiceLog, createVoiceLog, currentRole, products, searchVoiceCandidates, setCurrentRole, statusMessage, transactions, undoTransaction } = useLocalStore();
   const [mode, setMode] = useState<StockMode>("sale");
   const [query, setQuery] = useState("");
   const [customOpen, setCustomOpen] = useState(false);
@@ -115,7 +115,7 @@ export function StockWorkspace({
 
   async function handleCommandText(result: { transcript: string; language?: string; latencyMs?: number }, source: CommandSource) {
     const intent = parseVoiceIntent(result.transcript, result.language);
-    const candidates = findVoiceCandidates(products, result.transcript, 2);
+    const candidates = await searchVoiceCandidates(result.transcript, 2);
     setCommandSource(source);
     setVoiceIntent(intent);
     setVoiceCandidates(candidates);
@@ -147,6 +147,10 @@ export function StockWorkspace({
     setVoiceIntent(null);
     setVoiceCandidates([]);
     setVoiceLogId(null);
+  }
+
+  function updateVoiceQty(nextQty: number) {
+    setVoiceIntent((current) => (current ? { ...current, qty: Math.max(1, nextQty) } : current));
   }
 
   async function undoLast() {
@@ -335,7 +339,23 @@ export function StockWorkspace({
                 <X size={18} />
               </button>
             </div>
-            <div className="mb-3 rounded-md bg-mist p-3 text-sm">Quantity: <b>{voiceIntent.qty}</b></div>
+            <div className="mb-3 rounded-md bg-mist p-3">
+              <div className="mb-2 text-sm font-semibold text-zinc-700">Quantity</div>
+              <div className="flex items-center justify-between gap-3">
+                <button className="tap-target rounded-md border bg-white px-5" onClick={() => updateVoiceQty(voiceIntent.qty - 1)} aria-label="Decrease voice quantity">
+                  <Minus size={18} />
+                </button>
+                <input
+                  className="w-24 rounded-md border bg-white px-3 py-2 text-center text-2xl font-bold"
+                  value={voiceIntent.qty}
+                  onChange={(event) => updateVoiceQty(Number(event.target.value) || 1)}
+                  inputMode="numeric"
+                />
+                <button className="tap-target rounded-md border bg-white px-5" onClick={() => updateVoiceQty(voiceIntent.qty + 1)} aria-label="Increase voice quantity">
+                  <Plus size={18} />
+                </button>
+              </div>
+            </div>
             <div className="space-y-2">
               {voiceCandidates.map((candidate) => (
                 <button key={candidate.product.tenant_product_id} className="tap-target w-full rounded-md border bg-white p-3 text-left shadow-soft" onClick={() => confirmVoiceCandidate(candidate)} disabled={busy || !roleCanUseMode}>

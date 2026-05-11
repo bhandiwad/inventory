@@ -131,7 +131,9 @@ sell 2 Brezza LLM
 stock in 3 Swift mat
 ```
 
-The app extracts quantity/action, retrieves top candidates from the active catalog, and waits for the user to confirm. Voice logs are linked to confirmed voice transactions.
+The app extracts quantity/action, retrieves top candidates from the active catalog with the Supabase `search_tenant_products` trigram RPC, and waits for the user to confirm. The quantity can be corrected before confirmation. Voice logs are linked to confirmed voice transactions.
+
+Review recent voice attempts at `/en/admin/voice`. The dashboard shows transcript, parsed action, top candidates, confirmed match, language, and latency. Audio is not retained by default to keep pilot cost and privacy risk low.
 
 ## Phase 1 Verification
 

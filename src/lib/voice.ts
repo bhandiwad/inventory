@@ -64,9 +64,7 @@ export function parseVoiceIntent(transcript: string, language?: string): VoiceIn
 }
 
 function scoreProduct(product: ProductCard, transcript: string) {
-  const queryTerms = normalize(transcript)
-    .split(" ")
-    .filter((term) => term && !commandWords.has(term) && !/^\d+$/.test(term) && !numberWords.has(term));
+  const queryTerms = voiceProductTerms(transcript);
   const haystack = normalize([
     product.display_name,
     product.shop_label,
@@ -85,6 +83,16 @@ function scoreProduct(product: ProductCard, transcript: string) {
   return score;
 }
 
+export function voiceProductTerms(transcript: string) {
+  return normalize(transcript)
+    .split(" ")
+    .filter((term) => term && !commandWords.has(term) && !/^\d+$/.test(term) && !numberWords.has(term));
+}
+
+export function voiceProductQuery(transcript: string) {
+  return voiceProductTerms(transcript).join(" ");
+}
+
 export function findVoiceCandidates(products: ProductCard[], transcript: string, limit = 2): VoiceCandidate[] {
   return products
     .map((product) => ({ product, score: scoreProduct(product, transcript) }))
@@ -95,7 +103,8 @@ export function findVoiceCandidates(products: ProductCard[], transcript: string,
 
 export async function transcribeWithSarvam(audio: Blob): Promise<TranscriptResult> {
   const formData = new FormData();
-  formData.append("file", audio, `voice-${Date.now()}.webm`);
+  const extension = audio.type.includes("mp4") ? "mp4" : audio.type.includes("mpeg") ? "mp3" : audio.type.includes("wav") ? "wav" : "webm";
+  formData.append("file", audio, `voice-${Date.now()}.${extension}`);
   const response = await fetch("/api/voice/transcribe", {
     method: "POST",
     body: formData

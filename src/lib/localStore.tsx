@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { demoBaseTime, demoProducts, demoTenantId, demoTransactions, demoUsers } from "./demoData";
 import { enqueueMutation } from "./offlineQueue";
 import { createClient, isSupabaseConfigured } from "./supabase";
-import type { CommandSource, InventoryTransaction, ProductCard, TenantRole, TenantUser, TransactionType, VoiceIntent } from "./types";
+import type { CommandSource, InventoryTransaction, ProductCard, TenantRole, TenantUser, TransactionType, VoiceCandidate, VoiceIntent } from "./types";
+import { findVoiceCandidates, voiceProductQuery } from "./voice";
 
 type BackendMode = "demo" | "supabase";
 
@@ -43,6 +44,7 @@ type Store = State & {
   addTransaction(input: AddTransactionInput): Promise<InventoryTransaction>;
   undoTransaction(id: string): Promise<void>;
   addCustomProduct(input: { name: string; brand: string; category: string; model?: string; variant?: string }): Promise<ProductCard>;
+  searchVoiceCandidates(transcript: string, limit?: number): Promise<VoiceCandidate[]>;
   createVoiceLog(input: CreateVoiceLogInput): Promise<string | null>;
   confirmVoiceLog(id: string | null, productId: string): Promise<void>;
   updateProduct(id: string, patch: Partial<ProductCard> & { aliasesText?: string }): Promise<void>;
@@ -420,6 +422,26 @@ export function LocalStoreProvider({ children }: { children: ReactNode }) {
       addTransaction,
       undoTransaction,
       addCustomProduct,
+      async searchVoiceCandidates(transcript, limit = 2) {
+        const fallback = () => findVoiceCandidates(state.products, transcript, limit);
+        if (state.backendMode !== "supabase" || !state.tenantId || !isSupabaseConfigured()) return fallback();
+        const query = voiceProductQuery(transcript);
+        if (!query) return [];
+        const supabase = createClient();
+        const { data, error } = await supabase.rpc("search_tenant_products", {
+          target_tenant: state.tenantId,
+          q: query,
+          limit_count: limit
+        });
+        if (error) return fallback();
+        const candidates = (data ?? [])
+          .map((row: any) => {
+            const product = state.products.find((item) => item.tenant_product_id === row.tenant_product_id);
+            return product ? { product, score: Number(row.similarity_score ?? 0) } : null;
+          })
+          .filter(Boolean) as VoiceCandidate[];
+        return candidates.length ? candidates.slice(0, limit) : fallback();
+      },
       async createVoiceLog(input) {
         if (state.backendMode === "supabase" && state.tenantId) {
           const supabase = createClient();

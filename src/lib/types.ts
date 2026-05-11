@@ -47,6 +47,24 @@ export type VoiceCandidate = {
   score: number;
 };
 
+export type VoiceLog = {
+  id: string;
+  tenant_id: string;
+  audio_url?: string | null;
+  raw_transcript?: string | null;
+  language_detected?: string | null;
+  parsed_intent?: {
+    qty?: number;
+    type?: TransactionType;
+    transcript?: string;
+  } | null;
+  candidate_tenant_product_ids?: string[] | null;
+  matched_tenant_product_id?: string | null;
+  was_confirmed?: boolean | null;
+  latency_ms?: number | null;
+  created_at: string;
+};
+
 export type TenantUser = {
   id: string;
   name: string;
