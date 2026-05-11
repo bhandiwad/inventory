@@ -35,6 +35,7 @@ export function VoiceControl({
   onError(message: string): void;
   transcribeAudio(audio: Blob): Promise<TranscriptResult>;
 }) {
+  const [starting, setStarting] = useState(false);
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [sarvamConfigured, setSarvamConfigured] = useState(true);
@@ -85,7 +86,12 @@ export function VoiceControl({
   }
 
   async function start() {
-    if (!canUse || recording || processing) return;
+    if (!canUse) {
+      onError("Only owner and staff can use voice.");
+      return;
+    }
+    if (recording || processing || starting) return;
+    setStarting(true);
     startedAtRef.current = Date.now();
     if (sarvamConfigured && navigator.mediaDevices && typeof MediaRecorder !== "undefined") {
       let stream: MediaStream | null = null;
@@ -115,10 +121,12 @@ export function VoiceControl({
         };
         recorderRef.current = recorder;
         recorder.start(250);
+        setStarting(false);
         setRecording(true);
         return;
       } catch (error) {
         if (stream && stream !== streamRef.current) stopStream(stream);
+        setStarting(false);
         setRecording(false);
         onError(microphoneErrorMessage(error));
         return;
@@ -146,8 +154,11 @@ export function VoiceControl({
       recognition.onend = () => setRecording(false);
       recognitionRef.current = recognition;
       recognition.start();
+      setStarting(false);
+      setRecording(true);
       return;
     }
+    setStarting(false);
     setRecording(false);
     onError("Voice is not supported in this browser");
   }
@@ -170,6 +181,7 @@ export function VoiceControl({
   }
 
   function toggleRecording() {
+    if (starting || processing) return;
     if (recording) {
       stop();
       return;
@@ -177,15 +189,31 @@ export function VoiceControl({
     start();
   }
 
+  function handlePointerUp(event: React.PointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    toggleRecording();
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleRecording();
+    }
+  }
+
+  const working = starting || processing;
+
   return (
     <button
-      aria-label={recording ? "Stop and match voice" : "Start voice input"}
-      className={`fixed bottom-20 left-1/2 z-40 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-full shadow-soft ${recording ? "bg-red-600 text-white" : canUse ? "bg-leaf text-white" : "bg-zinc-300 text-zinc-600"}`}
-      disabled={!canUse || processing}
-      onClick={toggleRecording}
-      title={canUse ? (processing ? "Matching voice" : recording ? "Tap again to match voice" : "Tap to speak") : "Viewer cannot use voice"}
+      type="button"
+      aria-label={recording ? "Stop and match voice" : starting ? "Starting voice input" : processing ? "Matching voice" : "Start voice input"}
+      aria-busy={working}
+      className={`fixed bottom-20 left-1/2 z-40 grid h-14 w-14 -translate-x-1/2 touch-manipulation place-items-center rounded-full shadow-soft ${recording ? "bg-red-600 text-white" : canUse ? "bg-leaf text-white" : "bg-zinc-300 text-zinc-600"}`}
+      onPointerUp={handlePointerUp}
+      onKeyDown={handleKeyDown}
+      title={canUse ? (processing ? "Matching voice" : starting ? "Starting voice" : recording ? "Tap again to match voice" : "Tap to speak") : "Viewer cannot use voice"}
     >
-      {processing ? <Loader2 className="animate-spin" size={24} /> : <Mic size={24} />}
+      {working ? <Loader2 className="animate-spin" size={24} /> : <Mic size={24} />}
     </button>
   );
 }
