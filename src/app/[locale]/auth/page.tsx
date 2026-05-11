@@ -1,10 +1,12 @@
 "use client";
 
+import { use } from "react";
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 
-export default function AuthPage() {
+export default function AuthPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = use(params);
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -36,12 +38,28 @@ export default function AuthPage() {
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.verifyOtp({ phone, token: otp, type: "sms" });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setMessage(error.message);
       return;
     }
-    window.location.href = "/en/onboarding";
+    await supabase.rpc("accept_pending_tenant_invites", { user_phone: phone });
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData.session?.user.id;
+    const { data: memberships, error: membershipError } = userId
+      ? await supabase
+          .from("tenant_memberships")
+          .select("tenant_id")
+          .eq("user_id", userId)
+          .eq("is_active", true)
+          .limit(1)
+      : { data: null, error: null };
+    setLoading(false);
+    if (membershipError) {
+      setMessage(membershipError.message);
+      return;
+    }
+    window.location.href = memberships?.length ? `/${locale}` : `/${locale}/onboarding`;
   }
 
   return (
@@ -51,7 +69,7 @@ export default function AuthPage() {
           <ShieldCheck size={24} />
         </div>
         <h1 className="text-2xl font-bold">Phone login</h1>
-        <p className="mt-1 text-sm text-zinc-600">Use the shop owner or staff phone number.</p>
+        <p className="mt-1 text-sm text-zinc-600">Use the shop owner or invited staff phone number.</p>
       </div>
       <section className="rounded-lg border bg-white p-4 shadow-soft">
         <label className="mb-2 block text-sm font-semibold">Phone number</label>
@@ -73,6 +91,7 @@ export default function AuthPage() {
           </>
         )}
         {message ? <p className="mt-3 text-sm text-zinc-700">{message}</p> : null}
+        {!otpSent ? <p className="mt-3 text-xs text-zinc-500">New owners continue to shop setup after OTP. Invited staff and viewers open the existing shop automatically.</p> : null}
       </section>
     </main>
   );
