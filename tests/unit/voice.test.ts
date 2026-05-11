@@ -34,4 +34,9 @@ describe("voice interpretation", () => {
     expect(intent.action).toBe("lookup");
     expect(intent.type).toBe("sale");
   });
+
+  it("expands Kannada product words for lookup", () => {
+    expect(voiceProductQuery("ಬ್ರೆಜ್ಜಾ ಮ್ಯಾಟ್ ಸ್ಟಾಕ್")).toContain("brezza");
+    expect(voiceProductQuery("ಬ್ರೆಜ್ಜಾ ಮ್ಯಾಟ್ ಸ್ಟಾಕ್")).toContain("llm");
+  });
 });

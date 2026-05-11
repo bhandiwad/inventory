@@ -46,8 +46,44 @@ const commandWords = new Set([
   "qty"
 ]);
 
+const domainWords = new Map<string, string[]>([
+  ["ಸ್ಟಾಕ್", ["stock"]],
+  ["ಮಾಲು", ["stock"]],
+  ["ಇದೆ", ["stock"]],
+  ["ಎಷ್ಟು", ["stock"]],
+  ["ಎಷ್ಟಿದೆ", ["stock"]],
+  ["ಬ್ರೆಜ್ಜಾ", ["brezza"]],
+  ["ಬ್ರೆಜಾ", ["brezza"]],
+  ["ಬ್ರಿಜ್ಜಾ", ["brezza"]],
+  ["ಬ್ರೀಜಾ", ["brezza"]],
+  ["ಸ್ವಿಫ್ಟ್", ["swift"]],
+  ["ಸ್ವಿಫ್ಟ", ["swift"]],
+  ["ಕ್ರೆಟಾ", ["creta"]],
+  ["ನೆಕ್ಸಾನ್", ["nexon"]],
+  ["ಮ್ಯಾಟ್", ["llm"]],
+  ["ಮ್ಯಾಟ್ಸ್", ["llm"]],
+  ["ಮ್ಯಾಟು", ["llm"]],
+  ["ಲ್ಯಾಮಿನೇಶನ್", ["llm"]],
+  ["ಎಲ್ಎಲ್ಎಂ", ["llm"]],
+  ["ಎಲ್ ಎಲ್ ಎಂ", ["llm"]],
+  ["ಡಿಕ್ಕಿ", ["trunk"]],
+  ["ಬೂಟ್", ["trunk"]],
+  ["ಟ್ರಂಕ್", ["trunk"]],
+  ["ಪಾರ್ಸೆಲ್", ["parcel"]],
+  ["ಟ್ರೇ", ["tray"]]
+]);
+
 function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function expandDomainWords(value: string) {
+  const additions: string[] = [];
+  const lowerValue = value.toLowerCase();
+  for (const [word, aliases] of domainWords) {
+    if (lowerValue.includes(word)) additions.push(...aliases);
+  }
+  return additions.join(" ");
 }
 
 export function parseVoiceIntent(transcript: string, language?: string): VoiceIntent {
@@ -87,7 +123,8 @@ function scoreProduct(product: ProductCard, transcript: string) {
 }
 
 export function voiceProductTerms(transcript: string) {
-  return normalize(transcript)
+  const expanded = `${transcript} ${expandDomainWords(transcript)}`;
+  return normalize(expanded)
     .split(" ")
     .filter((term) => term && !commandWords.has(term) && !/^\d+$/.test(term) && !numberWords.has(term));
 }

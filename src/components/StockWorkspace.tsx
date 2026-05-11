@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { BadgePlus, Minus, Plus, Search, X } from "lucide-react";
+import { AlertTriangle, BadgePlus, Minus, Plus, Search, X } from "lucide-react";
 import { ClientTime } from "@/components/ClientTime";
 import { ChatControl } from "@/components/ChatControl";
 import { OfflineBadge } from "@/components/OfflineBadge";
@@ -37,7 +37,7 @@ export function StockWorkspace({
   const [selectedBrand, setSelectedBrand] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState<ProductCard | null>(null);
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState("1");
   const [note, setNote] = useState("");
   const [lastTransactionId, setLastTransactionId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
@@ -46,6 +46,7 @@ export function StockWorkspace({
   const [voiceCandidates, setVoiceCandidates] = useState<VoiceCandidate[]>([]);
   const [voiceLogId, setVoiceLogId] = useState<string | null>(null);
   const [commandSource, setCommandSource] = useState<CommandSource>("voice");
+  const [pendingAction, setPendingAction] = useState<{ product: ProductCard; qty: number; type: TransactionType } | null>(null);
   const brands = Array.from(new Set(products.map((product) => product.brand_name).filter(Boolean) as string[]));
   const featuredBrands = ["Maruti", "Hyundai", "Tata", "Mahindra", "Toyota", "Kia", "Nexa", "Universal / Generic"].filter((brand) => brands.includes(brand));
   const categories = Array.from(new Set(products.filter((product) => selectedBrand === "All" || product.brand_name === selectedBrand).map((product) => product.category_name).filter(Boolean) as string[])).slice(0, 8);
@@ -56,7 +57,10 @@ export function StockWorkspace({
   });
   const visibleProducts = matchingProducts.slice(0, 16);
   const roleCanUseMode = mode === "purchase" || mode === "sale" ? canWriteStock(currentRole) : canAdjustStock(currentRole);
-  const willBeNegative = selectedProduct && typeof selectedProduct.on_hand === "number" && selectedProduct.on_hand - Math.abs(qty) < 0;
+  const parsedQty = Math.max(1, Number(qty) || 1);
+  const maxRemovableQty = selectedProduct && typeof selectedProduct.on_hand === "number" ? Math.max(0, selectedProduct.on_hand) : null;
+  const effectiveRemoveQty = maxRemovableQty == null ? parsedQty : Math.min(parsedQty, Math.max(1, maxRemovableQty));
+  const willBeNegative = selectedProduct && typeof selectedProduct.on_hand === "number" && selectedProduct.on_hand - parsedQty < 0;
 
   async function createCustom() {
     if (!customName.trim()) return;
@@ -93,7 +97,7 @@ export function StockWorkspace({
       setLastTransactionId(transaction.id);
       setToast(navigator.onLine ? "Stock updated" : "Saved offline");
       setSelectedProduct(null);
-      setQty(1);
+      setQty("1");
       setNote("");
     } catch (error) {
       setToast(error instanceof Error ? error.message : "Could not update stock");
@@ -109,7 +113,7 @@ export function StockWorkspace({
     setVoiceIntent(intent);
     setVoiceCandidates(candidates);
     if (intent.action === "transaction") setMode(intent.type);
-    setQty(intent.qty);
+    setQty(String(intent.qty));
     if (candidates[0]) setQuery(candidates[0].product.display_name);
     const logId = source === "voice" ? await createVoiceLog({
         intent,
@@ -150,6 +154,34 @@ export function StockWorkspace({
 
   function updateVoiceQty(nextQty: number) {
     setVoiceIntent((current) => (current ? { ...current, qty: Math.max(1, nextQty) } : current));
+  }
+
+  function updateQty(value: string) {
+    if (!/^\d*$/.test(value)) return;
+    setQty(value);
+  }
+
+  function stepQty(delta: number) {
+    setQty(String(Math.max(1, parsedQty + delta)));
+  }
+
+  function requestStockAction(product: ProductCard, transactionType: TransactionType) {
+    const quantity = transactionType === "sale" || transactionType === "damage" ? effectiveRemoveQty : parsedQty;
+    setPendingAction({ product, qty: quantity, type: transactionType });
+  }
+
+  async function confirmPendingAction() {
+    if (!pendingAction) return;
+    await commitProduct(pendingAction.product, pendingAction.qty, pendingAction.type);
+    setPendingAction(null);
+  }
+
+  function actionCopy(type: TransactionType) {
+    if (type === "purchase") return { title: "Add stock", verb: "add" };
+    if (type === "sale") return { title: "Remove stock", verb: "remove" };
+    if (type === "damage") return { title: "Mark damage", verb: "mark damaged" };
+    if (type === "return") return { title: "Record return", verb: "return to stock" };
+    return { title: "Adjust stock", verb: "adjust" };
   }
 
   async function undoLast() {
@@ -374,6 +406,34 @@ export function StockWorkspace({
         transcribeAudio={transcribeWithSarvam}
       />
       <ChatControl canUse={canWriteStock(currentRole)} onSubmit={handleChatMessage} />
+      {pendingAction ? (
+        <div className="fixed inset-0 z-[60] flex items-end bg-black/30 px-3 pb-3" role="dialog" aria-modal="true">
+          <section className="w-full rounded-lg bg-white p-4 shadow-soft">
+            <div className="mb-3 flex items-start gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-md bg-mist text-ink">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">{actionCopy(pendingAction.type).title}</h2>
+                <p className="mt-1 text-sm text-zinc-600">
+                  {pendingAction.product.display_name} · {pendingAction.qty} pcs
+                </p>
+              </div>
+            </div>
+            <p className="mb-4 rounded-md bg-mist p-3 text-sm text-zinc-700">
+              Confirm to {actionCopy(pendingAction.type).verb} {pendingAction.qty} item{pendingAction.qty === 1 ? "" : "s"}.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button className="tap-target rounded-md border px-4 py-3 font-semibold" onClick={() => setPendingAction(null)} disabled={busy}>
+                Cancel
+              </button>
+              <button className="tap-target rounded-md bg-leaf px-4 py-3 font-bold text-white disabled:bg-zinc-300" onClick={confirmPendingAction} disabled={busy}>
+                {busy ? "Saving..." : "Confirm"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {selectedProduct ? (
         <div className="fixed inset-0 z-50 flex items-end bg-black/30 px-3 pb-3" role="dialog" aria-modal="true">
           <section className="w-full rounded-lg bg-white p-4 shadow-soft">
@@ -391,19 +451,25 @@ export function StockWorkspace({
               Current stock: <span className={typeof selectedProduct.on_hand === "number" && selectedProduct.on_hand < 0 ? "text-2xl font-bold text-red-700" : "text-2xl font-bold text-leaf"}>{selectedProduct.on_hand ?? "not set"}</span>
             </div>
             <div className="mb-3 flex items-center justify-between">
-              <button className="tap-target rounded-md border px-5" onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Decrease quantity"><Minus size={18} /></button>
-              <input className="w-24 rounded-md border px-3 py-2 text-center text-2xl font-bold" value={qty} onChange={(event) => setQty(Math.max(1, Number(event.target.value) || 1))} inputMode="numeric" />
-              <button className="tap-target rounded-md border px-5" onClick={() => setQty(qty + 1)} aria-label="Increase quantity"><Plus size={18} /></button>
+              <button className="tap-target rounded-md border px-5" onClick={() => stepQty(-1)} aria-label="Decrease quantity"><Minus size={18} /></button>
+              <input
+                className="w-24 rounded-md border px-3 py-2 text-center text-2xl font-bold"
+                value={qty}
+                onBlur={() => setQty(String(parsedQty))}
+                onChange={(event) => updateQty(event.target.value)}
+                inputMode="numeric"
+              />
+              <button className="tap-target rounded-md border px-5" onClick={() => stepQty(1)} aria-label="Increase quantity"><Plus size={18} /></button>
             </div>
             <textarea className="mb-3 min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Optional note" value={note} onChange={(event) => setNote(event.target.value)} />
-            {willBeNegative ? <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-800">Removing this quantity will take stock below zero.</div> : null}
+            {willBeNegative ? <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-800">Only {maxRemovableQty ?? 0} available to remove.</div> : null}
             {!canWriteStock(currentRole) ? <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">This role cannot update stock.</div> : null}
             <div className="grid grid-cols-2 gap-2">
-              <button className="tap-target rounded-md border border-red-200 bg-red-50 px-4 py-3 font-bold text-red-700 disabled:bg-zinc-100 disabled:text-zinc-400" onClick={() => commitProduct(selectedProduct, qty, "sale")} disabled={!canWriteStock(currentRole) || busy}>
-                <span className="inline-flex items-center gap-2"><Minus size={18} /> {busy ? "Saving..." : `Remove ${qty}`}</span>
+              <button aria-label="Remove stock" className="tap-target grid place-items-center rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700 disabled:bg-zinc-100 disabled:text-zinc-400" onClick={() => requestStockAction(selectedProduct, "sale")} disabled={!canWriteStock(currentRole) || busy || effectiveRemoveQty < 1}>
+                <Minus size={22} />
               </button>
-              <button className="tap-target rounded-md bg-leaf px-4 py-3 font-bold text-white disabled:bg-zinc-300" onClick={() => commitProduct(selectedProduct, qty, "purchase")} disabled={!canWriteStock(currentRole) || busy}>
-                <span className="inline-flex items-center gap-2"><Plus size={18} /> {busy ? "Saving..." : `Add ${qty}`}</span>
+              <button aria-label="Add stock" className="tap-target grid place-items-center rounded-md bg-leaf px-4 py-3 text-white disabled:bg-zinc-300" onClick={() => requestStockAction(selectedProduct, "purchase")} disabled={!canWriteStock(currentRole) || busy}>
+                <Plus size={22} />
               </button>
             </div>
             {canAdjustStock(currentRole) ? (
@@ -412,7 +478,7 @@ export function StockWorkspace({
                   <button
                     key={item}
                     className="tap-target rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm font-semibold capitalize"
-                    onClick={() => commitProduct(selectedProduct, qty, item)}
+                    onClick={() => requestStockAction(selectedProduct, item)}
                     disabled={busy}
                   >
                     {item}
