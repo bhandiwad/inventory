@@ -35,6 +35,7 @@ export async function enqueueMutation(input: {
   tenant_product_id: string;
   qty: number;
   type: TransactionType;
+  source?: QueuedMutation["source"];
   notes?: string;
 }) {
   if (!canQueueMutation(input.role, input.type)) {
@@ -46,7 +47,7 @@ export async function enqueueMutation(input: {
     tenant_product_id: input.tenant_product_id,
     qty: input.qty,
     type: input.type,
-    source: "manual",
+    source: input.source ?? "manual",
     notes: input.notes,
     created_at: new Date().toISOString(),
     device_id: deviceId()

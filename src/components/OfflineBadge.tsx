@@ -15,6 +15,7 @@ export function OfflineBadge() {
       const failures = await syncQueuedMutations();
       setFailure(failures[0]?.message ?? null);
       await refresh();
+      window.dispatchEvent(new Event("inventory:sync-complete"));
     };
     const onOffline = () => setOnline(false);
     setOnline(navigator.onLine);

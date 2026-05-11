@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { demoBaseTime, demoProducts, demoTenantId, demoTransactions, demoUsers } from "./demoData";
+import { enqueueMutation } from "./offlineQueue";
 import { createClient, isSupabaseConfigured } from "./supabase";
 import type { CommandSource, InventoryTransaction, ProductCard, TenantRole, TenantUser, TransactionType, VoiceIntent } from "./types";
 
@@ -246,6 +247,14 @@ export function LocalStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const refreshAfterSync = () => {
+      loadSupabase();
+    };
+    window.addEventListener("inventory:sync-complete", refreshAfterSync);
+    return () => window.removeEventListener("inventory:sync-complete", refreshAfterSync);
+  }, []);
+
+  useEffect(() => {
     persistDemoState(state);
   }, [state]);
 
@@ -253,6 +262,34 @@ export function LocalStoreProvider({ children }: { children: ReactNode }) {
     async function addTransaction(input: AddTransactionInput) {
       const product = state.products.find((item) => item.tenant_product_id === input.tenant_product_id);
       if (state.backendMode === "supabase" && state.tenantId) {
+        if (!navigator.onLine) {
+          const queued = await enqueueMutation({
+            role: state.currentRole,
+            tenant_id: state.tenantId,
+            tenant_product_id: input.tenant_product_id,
+            qty: input.qty,
+            type: input.type,
+            source: input.source ?? "manual",
+            notes: input.notes
+          });
+          const tx = mapTransaction({
+            id: queued.client_mutation_id,
+            tenant_id: queued.tenant_id,
+            tenant_product_id: queued.tenant_product_id,
+            qty: queued.qty,
+            type: queued.type,
+            source: queued.source,
+            notes: queued.notes,
+            occurred_at: queued.created_at,
+            created_offline: true
+          }, state.products, "Pending sync");
+          setState((current) => ({
+            ...current,
+            products: applyQty(current.products, input.tenant_product_id, input.qty),
+            transactions: [tx, ...current.transactions]
+          }));
+          return tx;
+        }
         const supabase = createClient();
         const { data: sessionData } = await supabase.auth.getSession();
         const { data, error } = await supabase
