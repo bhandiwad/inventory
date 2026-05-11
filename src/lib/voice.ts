@@ -103,15 +103,17 @@ export function findVoiceCandidates(products: ProductCard[], transcript: string,
 
 export async function transcribeWithSarvam(audio: Blob): Promise<TranscriptResult> {
   const formData = new FormData();
-  const extension = audio.type.includes("mp4") ? "mp4" : audio.type.includes("mpeg") ? "mp3" : audio.type.includes("wav") ? "wav" : "webm";
+  const extension = audio.type.includes("mp4") ? "m4a" : audio.type.includes("mpeg") ? "mp3" : audio.type.includes("wav") ? "wav" : "webm";
   formData.append("file", audio, `voice-${Date.now()}.${extension}`);
+  formData.append("mime_type", audio.type || "unknown");
   const response = await fetch("/api/voice/transcribe", {
     method: "POST",
     body: formData
   });
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error ?? "Voice transcription failed");
+    const detail = typeof data.error === "string" ? data.error : typeof data.message === "string" ? data.message : JSON.stringify(data.error ?? data);
+    throw new Error(detail || "Voice transcription failed");
   }
   return data as TranscriptResult;
 }
