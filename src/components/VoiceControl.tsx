@@ -81,7 +81,6 @@ export function VoiceControl({
 
   async function start() {
     if (!canUse || recording || processing) return;
-    setRecording(true);
     startedAtRef.current = Date.now();
     if (sarvamConfigured && navigator.mediaDevices && typeof MediaRecorder !== "undefined") {
       let stream: MediaStream | null = null;
@@ -100,6 +99,9 @@ export function VoiceControl({
           setProcessing(true);
           try {
             const audio = new Blob(chunksRef.current, { type: recorder.mimeType || mimeType || "audio/webm" });
+            if (audio.size < 512) {
+              throw new Error("I did not catch any audio. Tap the mic, speak, then tap again.");
+            }
             await onTranscript(await transcribeAudio(audio));
           } catch (error) {
             onError(error instanceof Error ? error.message : "Voice transcription failed");
@@ -108,7 +110,8 @@ export function VoiceControl({
           }
         };
         recorderRef.current = recorder;
-        recorder.start();
+        recorder.start(250);
+        setRecording(true);
         return;
       } catch (error) {
         if (stream) stopStream(stream);
@@ -152,19 +155,31 @@ export function VoiceControl({
       return;
     }
     if (recorderRef.current?.state === "recording") {
+      const elapsed = Date.now() - startedAtRef.current;
+      if (elapsed < 700) {
+        window.setTimeout(stop, 700 - elapsed);
+        return;
+      }
+      recorderRef.current.requestData();
       recorderRef.current.stop();
     }
   }
 
+  function toggleRecording() {
+    if (recording) {
+      stop();
+      return;
+    }
+    start();
+  }
+
   return (
     <button
-      aria-label={recording ? "Release to match voice" : "Hold to speak"}
+      aria-label={recording ? "Stop and match voice" : "Start voice input"}
       className={`fixed bottom-20 left-1/2 z-40 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-full shadow-soft ${recording ? "bg-red-600 text-white" : canUse ? "bg-leaf text-white" : "bg-zinc-300 text-zinc-600"}`}
       disabled={!canUse || processing}
-      onPointerDown={start}
-      onPointerUp={stop}
-      onPointerCancel={stop}
-      title={canUse ? "Hold to speak" : "Viewer cannot use voice"}
+      onClick={toggleRecording}
+      title={canUse ? (recording ? "Tap again to match voice" : "Tap to speak") : "Viewer cannot use voice"}
     >
       <Mic size={24} />
     </button>

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:clean": "bash scripts/dev_clean.sh",
+    "vercel:env:sync": "node scripts/vercel_env_sync.mjs",
     "vercel:build": "vercel build",
     "build": "next build",
     "start": "next start",
