@@ -12,6 +12,18 @@ function sarvamCodecFor(type: string) {
   return null;
 }
 
+function sarvamMimeFor(type: string) {
+  const normalized = type.toLowerCase();
+  if (normalized.includes("mp4") || normalized.includes("m4a")) return "audio/x-m4a";
+  if (normalized.includes("aac")) return "audio/aac";
+  if (normalized.includes("mpeg") || normalized.includes("mp3")) return "audio/mp3";
+  if (normalized.includes("wav")) return "audio/wav";
+  if (normalized.includes("ogg")) return "audio/ogg";
+  if (normalized.includes("opus")) return "audio/opus";
+  if (normalized.includes("webm")) return "audio/webm";
+  return "application/octet-stream";
+}
+
 function fileExtensionFor(type: string) {
   const normalized = type.toLowerCase();
   if (normalized.includes("mp4") || normalized.includes("m4a")) return "m4a";
@@ -59,7 +71,9 @@ export async function POST(request: Request) {
   const detectedType = [file.type, typeof browserMimeType === "string" ? browserMimeType : ""].filter(Boolean).join(" ");
   const extension = fileExtensionFor(detectedType);
   const codec = sarvamCodecFor(detectedType);
-  formData.append("file", file, `voice.${extension}`);
+  const sarvamMimeType = sarvamMimeFor(detectedType);
+  const normalizedFile = new File([file], `voice.${extension}`, { type: sarvamMimeType });
+  formData.append("file", normalizedFile);
   formData.append("model", "saaras:v3");
   formData.append("mode", "transcribe");
   formData.append("language_code", "unknown");
@@ -79,6 +93,7 @@ export async function POST(request: Request) {
       status: response.status,
       audioType: file.type,
       browserMimeType,
+      sarvamMimeType,
       audioSize: file.size,
       codec,
       error: data
