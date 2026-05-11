@@ -11,6 +11,7 @@ import type { VoiceLog } from "@/lib/types";
 function readIntent(log: VoiceLog) {
   const qty = log.parsed_intent?.qty ?? 1;
   const type = log.parsed_intent?.type ?? "sale";
+  if (log.parsed_intent?.action === "lookup") return "lookup";
   return `${type} x ${qty}`;
 }
 

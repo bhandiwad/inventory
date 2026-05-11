@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Mic } from "lucide-react";
+import { Loader2, Mic } from "lucide-react";
 import type { TranscriptResult } from "@/lib/voice";
 
 type SpeechRecognitionLike = {
@@ -39,6 +39,7 @@ export function VoiceControl({
   const [processing, setProcessing] = useState(false);
   const [sarvamConfigured, setSarvamConfigured] = useState(true);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const startedAtRef = useRef(0);
@@ -48,6 +49,10 @@ export function VoiceControl({
       .then((response) => response.json())
       .then((data) => setSarvamConfigured(Boolean(data.sarvamConfigured)))
       .catch(() => setSarvamConfigured(false));
+    return () => {
+      if (streamRef.current) stopStream(streamRef.current);
+      streamRef.current = null;
+    };
   }, []);
 
   function supportedRecorderMimeType() {
@@ -85,8 +90,8 @@ export function VoiceControl({
     if (sarvamConfigured && navigator.mediaDevices && typeof MediaRecorder !== "undefined") {
       let stream: MediaStream | null = null;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const activeStream = stream;
+        stream = streamRef.current && streamRef.current.active ? streamRef.current : await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
         const mimeType = supportedRecorderMimeType();
         const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
         chunksRef.current = [];
@@ -94,7 +99,6 @@ export function VoiceControl({
           if (event.data.size) chunksRef.current.push(event.data);
         };
         recorder.onstop = async () => {
-          stopStream(activeStream);
           setRecording(false);
           setProcessing(true);
           try {
@@ -114,7 +118,7 @@ export function VoiceControl({
         setRecording(true);
         return;
       } catch (error) {
-        if (stream) stopStream(stream);
+        if (stream && stream !== streamRef.current) stopStream(stream);
         setRecording(false);
         onError(microphoneErrorMessage(error));
         return;
@@ -179,9 +183,9 @@ export function VoiceControl({
       className={`fixed bottom-20 left-1/2 z-40 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-full shadow-soft ${recording ? "bg-red-600 text-white" : canUse ? "bg-leaf text-white" : "bg-zinc-300 text-zinc-600"}`}
       disabled={!canUse || processing}
       onClick={toggleRecording}
-      title={canUse ? (recording ? "Tap again to match voice" : "Tap to speak") : "Viewer cannot use voice"}
+      title={canUse ? (processing ? "Matching voice" : recording ? "Tap again to match voice" : "Tap to speak") : "Viewer cannot use voice"}
     >
-      <Mic size={24} />
+      {processing ? <Loader2 className="animate-spin" size={24} /> : <Mic size={24} />}
     </button>
   );
 }

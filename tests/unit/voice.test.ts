@@ -7,6 +7,7 @@ describe("voice interpretation", () => {
     const intent = parseVoiceIntent("sell two Brezza LLM");
     expect(intent.type).toBe("sale");
     expect(intent.qty).toBe(2);
+    expect(intent.action).toBe("transaction");
   });
 
   it("returns curated alias candidates without auto-committing", () => {
@@ -20,10 +21,17 @@ describe("voice interpretation", () => {
     const candidates = findVoiceCandidates(seedProducts, intent.transcript, 2);
     expect(intent.type).toBe("purchase");
     expect(intent.qty).toBe(3);
+    expect(intent.action).toBe("transaction");
     expect(candidates[0].product.display_name).toContain("SWIFT");
   });
 
   it("removes command words before server-side candidate search", () => {
     expect(voiceProductQuery("stock out two Breeza LLM pieces")).toBe("breeza llm");
+  });
+
+  it("treats product stock questions as lookup, not sale", () => {
+    const intent = parseVoiceIntent("brezza llm stock");
+    expect(intent.action).toBe("lookup");
+    expect(intent.type).toBe("sale");
   });
 });

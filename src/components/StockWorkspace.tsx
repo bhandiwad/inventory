@@ -46,7 +46,6 @@ export function StockWorkspace({
   const [voiceCandidates, setVoiceCandidates] = useState<VoiceCandidate[]>([]);
   const [voiceLogId, setVoiceLogId] = useState<string | null>(null);
   const [commandSource, setCommandSource] = useState<CommandSource>("voice");
-  const isStockOut = mode === "sale";
   const brands = Array.from(new Set(products.map((product) => product.brand_name).filter(Boolean) as string[]));
   const featuredBrands = ["Maruti", "Hyundai", "Tata", "Mahindra", "Toyota", "Kia", "Nexa", "Universal / Generic"].filter((brand) => brands.includes(brand));
   const categories = Array.from(new Set(products.filter((product) => selectedBrand === "All" || product.brand_name === selectedBrand).map((product) => product.category_name).filter(Boolean) as string[])).slice(0, 8);
@@ -57,9 +56,7 @@ export function StockWorkspace({
   });
   const visibleProducts = matchingProducts.slice(0, 16);
   const roleCanUseMode = mode === "purchase" || mode === "sale" ? canWriteStock(currentRole) : canAdjustStock(currentRole);
-  const actionLabel = mode === "sale" ? stockOutLabel : mode === "purchase" ? stockInLabel : mode[0].toUpperCase() + mode.slice(1);
-  const signedQty = mode === "sale" || mode === "damage" ? -Math.abs(qty) : Math.abs(qty);
-  const willBeNegative = selectedProduct && typeof selectedProduct.on_hand === "number" && selectedProduct.on_hand + signedQty < 0;
+  const willBeNegative = selectedProduct && typeof selectedProduct.on_hand === "number" && selectedProduct.on_hand - Math.abs(qty) < 0;
 
   async function createCustom() {
     if (!customName.trim()) return;
@@ -75,12 +72,6 @@ export function StockWorkspace({
     } finally {
       setBusy(false);
     }
-  }
-
-  function selectMode(nextMode: StockMode) {
-    setMode(nextMode);
-    setQty(1);
-    setToast("");
   }
 
   async function commitProduct(product: ProductCard, quantity: number, transactionType: TransactionType, source: "manual" | CommandSource = "manual", logId?: string | null) {
@@ -111,18 +102,13 @@ export function StockWorkspace({
     }
   }
 
-  async function commitSelectedProduct() {
-    if (!selectedProduct || !roleCanUseMode) return;
-    await commitProduct(selectedProduct, qty, mode);
-  }
-
   async function handleCommandText(result: { transcript: string; language?: string; latencyMs?: number }, source: CommandSource) {
     const intent = parseVoiceIntent(result.transcript, result.language);
     const candidates = await searchVoiceCandidates(result.transcript, 2);
     setCommandSource(source);
     setVoiceIntent(intent);
     setVoiceCandidates(candidates);
-    setMode(intent.type);
+    if (intent.action === "transaction") setMode(intent.type);
     setQty(intent.qty);
     if (candidates[0]) setQuery(candidates[0].product.display_name);
     const logId = source === "voice" ? await createVoiceLog({
@@ -145,7 +131,17 @@ export function StockWorkspace({
   }
 
   async function confirmVoiceCandidate(candidate: VoiceCandidate) {
-    if (!voiceIntent || !roleCanUseMode) return;
+    if (!voiceIntent) return;
+    if (voiceIntent.action === "lookup") {
+      if (commandSource === "voice") await confirmVoiceLog(voiceLogId ?? null, candidate.product.tenant_product_id);
+      setSelectedProduct(candidate.product);
+      setQuery(candidate.product.display_name);
+      setVoiceIntent(null);
+      setVoiceCandidates([]);
+      setVoiceLogId(null);
+      return;
+    }
+    if (!roleCanUseMode) return;
     await commitProduct(candidate.product, voiceIntent.qty, voiceIntent.type, commandSource, voiceLogId);
     setVoiceIntent(null);
     setVoiceCandidates([]);
@@ -175,7 +171,7 @@ export function StockWorkspace({
       <header className="mb-4 flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-leaf">{appName}</p>
-          <h1 className="text-2xl font-bold tracking-normal">{actionLabel}</h1>
+          <h1 className="text-2xl font-bold tracking-normal">Inventory</h1>
         </div>
         <OfflineBadge />
       </header>
@@ -249,36 +245,6 @@ export function StockWorkspace({
           ))}
         </div>
       </section>
-      <div className="mb-3 grid grid-cols-2 gap-2" role="tablist" aria-label="Stock action">
-        <button
-          className={`tap-target rounded-md px-3 py-2 font-semibold ${isStockOut ? "bg-ink text-white" : "border border-zinc-300 bg-white"}`}
-          onClick={() => selectMode("sale")}
-          role="tab"
-          aria-selected={isStockOut}
-        >
-          {stockOutLabel}
-        </button>
-        <button
-          className={`tap-target rounded-md px-3 py-2 font-semibold ${!isStockOut ? "bg-ink text-white" : "border border-zinc-300 bg-white"}`}
-          onClick={() => selectMode("purchase")}
-          role="tab"
-          aria-selected={!isStockOut}
-        >
-          {stockInLabel}
-        </button>
-      </div>
-      <div className="mb-3 grid grid-cols-3 gap-2">
-        {(["adjustment", "return", "damage"] as const).map((item) => (
-          <button
-            key={item}
-            className={`tap-target rounded-md px-2 py-2 text-sm font-semibold capitalize ${mode === item ? "bg-ink text-white" : "border border-zinc-300 bg-white"}`}
-            onClick={() => selectMode(item)}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-      {!roleCanUseMode ? <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">This role cannot record {actionLabel.toLowerCase()} transactions.</div> : null}
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-bold uppercase text-zinc-500">Products</h2>
         <span className="text-sm text-zinc-600">{matchingProducts.length} found</span>
@@ -346,7 +312,7 @@ export function StockWorkspace({
         </div>
       </section>
       {toast ? (
-        <div className="fixed bottom-20 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-soft">
+        <div className="fixed bottom-36 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-soft">
           <span>{toast}</span>
           {lastTransactionId ? <button className="rounded bg-white/10 px-3 py-1" onClick={undoLast}>Undo</button> : null}
         </div>
@@ -357,14 +323,14 @@ export function StockWorkspace({
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold uppercase text-leaf">{commandSource === "voice" ? "Voice match" : "Chat match"}</div>
-                <h2 className="text-xl font-bold">{voiceIntent.type === "sale" ? stockOutLabel : voiceIntent.type === "purchase" ? stockInLabel : voiceIntent.type}</h2>
+                <h2 className="text-xl font-bold">{voiceIntent.action === "lookup" ? "Stock lookup" : voiceIntent.type === "sale" ? stockOutLabel : voiceIntent.type === "purchase" ? stockInLabel : voiceIntent.type}</h2>
                 <p className="mt-1 text-sm text-zinc-600">“{voiceIntent.transcript}”</p>
               </div>
               <button className="rounded-md border p-2" onClick={() => { setVoiceIntent(null); setVoiceCandidates([]); setVoiceLogId(null); }} aria-label="Close voice match">
                 <X size={18} />
               </button>
             </div>
-            <div className="mb-3 rounded-md bg-mist p-3">
+            {voiceIntent.action === "transaction" ? <div className="mb-3 rounded-md bg-mist p-3">
               <div className="mb-2 text-sm font-semibold text-zinc-700">Quantity</div>
               <div className="flex items-center justify-between gap-3">
                 <button className="tap-target rounded-md border bg-white px-5" onClick={() => updateVoiceQty(voiceIntent.qty - 1)} aria-label="Decrease voice quantity">
@@ -380,12 +346,13 @@ export function StockWorkspace({
                   <Plus size={18} />
                 </button>
               </div>
-            </div>
+            </div> : <div className="mb-3 rounded-md bg-mist p-3 text-sm text-zinc-700">Select a product to view stock and update it.</div>}
             <div className="space-y-2">
               {voiceCandidates.map((candidate) => (
-                <button key={candidate.product.tenant_product_id} className="tap-target w-full rounded-md border bg-white p-3 text-left shadow-soft" onClick={() => confirmVoiceCandidate(candidate)} disabled={busy || !roleCanUseMode}>
+                <button key={candidate.product.tenant_product_id} className="tap-target w-full rounded-md border bg-white p-3 text-left shadow-soft" onClick={() => confirmVoiceCandidate(candidate)} disabled={busy || (voiceIntent.action === "transaction" && !roleCanUseMode)}>
                   <div className="font-semibold">{candidate.product.display_name}</div>
                   <div className="text-sm text-zinc-600">{candidate.product.brand_name} · {candidate.product.category_name} · {candidate.product.on_hand ?? "not set"} on hand</div>
+                  <div className="mt-1 text-xs font-semibold text-leaf">{voiceIntent.action === "lookup" ? "Open product" : "Tap to confirm"}</div>
                 </button>
               ))}
             </div>
@@ -412,7 +379,7 @@ export function StockWorkspace({
           <section className="w-full rounded-lg bg-white p-4 shadow-soft">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold uppercase text-leaf">{actionLabel}</div>
+                <div className="text-sm font-semibold uppercase text-leaf">Update stock</div>
                 <h2 className="text-xl font-bold">{selectedProduct.display_name}</h2>
                 <p className="mt-1 text-sm text-zinc-600">{selectedProduct.brand_name} · {selectedProduct.category_name}</p>
               </div>
@@ -421,7 +388,7 @@ export function StockWorkspace({
               </button>
             </div>
             <div className="mb-3 rounded-md bg-mist p-3 text-sm">
-              Current stock: <span className={typeof selectedProduct.on_hand === "number" && selectedProduct.on_hand < 0 ? "font-bold text-red-700" : "font-bold text-leaf"}>{selectedProduct.on_hand ?? "not set"}</span>
+              Current stock: <span className={typeof selectedProduct.on_hand === "number" && selectedProduct.on_hand < 0 ? "text-2xl font-bold text-red-700" : "text-2xl font-bold text-leaf"}>{selectedProduct.on_hand ?? "not set"}</span>
             </div>
             <div className="mb-3 flex items-center justify-between">
               <button className="tap-target rounded-md border px-5" onClick={() => setQty(Math.max(1, qty - 1))} aria-label="Decrease quantity"><Minus size={18} /></button>
@@ -429,11 +396,30 @@ export function StockWorkspace({
               <button className="tap-target rounded-md border px-5" onClick={() => setQty(qty + 1)} aria-label="Increase quantity"><Plus size={18} /></button>
             </div>
             <textarea className="mb-3 min-h-20 w-full rounded-md border px-3 py-2 text-sm" placeholder="Optional note" value={note} onChange={(event) => setNote(event.target.value)} />
-            {willBeNegative ? <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-800">This will take stock below zero.</div> : null}
-            {!roleCanUseMode ? <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">This role cannot record this transaction.</div> : null}
-            <button className="tap-target w-full rounded-md bg-leaf px-4 py-3 font-bold text-white disabled:bg-zinc-300" onClick={commitSelectedProduct} disabled={!roleCanUseMode || busy}>
-              {busy ? "Saving..." : "Confirm"}
-            </button>
+            {willBeNegative ? <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-800">Removing this quantity will take stock below zero.</div> : null}
+            {!canWriteStock(currentRole) ? <div className="mb-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">This role cannot update stock.</div> : null}
+            <div className="grid grid-cols-2 gap-2">
+              <button className="tap-target rounded-md border border-red-200 bg-red-50 px-4 py-3 font-bold text-red-700 disabled:bg-zinc-100 disabled:text-zinc-400" onClick={() => commitProduct(selectedProduct, qty, "sale")} disabled={!canWriteStock(currentRole) || busy}>
+                <span className="inline-flex items-center gap-2"><Minus size={18} /> {busy ? "Saving..." : `Remove ${qty}`}</span>
+              </button>
+              <button className="tap-target rounded-md bg-leaf px-4 py-3 font-bold text-white disabled:bg-zinc-300" onClick={() => commitProduct(selectedProduct, qty, "purchase")} disabled={!canWriteStock(currentRole) || busy}>
+                <span className="inline-flex items-center gap-2"><Plus size={18} /> {busy ? "Saving..." : `Add ${qty}`}</span>
+              </button>
+            </div>
+            {canAdjustStock(currentRole) ? (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {(["adjustment", "return", "damage"] as const).map((item) => (
+                  <button
+                    key={item}
+                    className="tap-target rounded-md border border-zinc-300 bg-white px-2 py-2 text-sm font-semibold capitalize"
+                    onClick={() => commitProduct(selectedProduct, qty, item)}
+                    disabled={busy}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </section>
         </div>
       ) : null}

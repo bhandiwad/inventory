@@ -37,6 +37,7 @@ export type VoiceIntent = {
   transcript: string;
   qty: number;
   type: TransactionType;
+  action: "lookup" | "transaction";
   language?: string;
 };
 
@@ -56,6 +57,7 @@ export type VoiceLog = {
   parsed_intent?: {
     qty?: number;
     type?: TransactionType;
+    action?: "lookup" | "transaction";
     transcript?: string;
   } | null;
   candidate_tenant_product_ids?: string[] | null;

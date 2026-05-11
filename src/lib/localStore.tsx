@@ -451,7 +451,7 @@ export function LocalStoreProvider({ children }: { children: ReactNode }) {
               tenant_id: state.tenantId,
               raw_transcript: input.intent.transcript,
               language_detected: input.intent.language,
-              parsed_intent: { qty: input.intent.qty, type: input.intent.type },
+              parsed_intent: { qty: input.intent.qty, type: input.intent.type, action: input.intent.action },
               candidate_tenant_product_ids: input.candidateIds,
               latency_ms: input.latencyMs
             })

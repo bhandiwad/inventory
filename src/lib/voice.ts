@@ -56,11 +56,14 @@ export function parseVoiceIntent(transcript: string, language?: string): VoiceIn
   const numberTerm = terms.find((term) => /^\d+$/.test(term) || numberWords.has(term));
   const qty = numberTerm ? (/^\d+$/.test(numberTerm) ? Number(numberTerm) : numberWords.get(numberTerm) ?? 1) : 1;
   let type: TransactionType = "sale";
+  let action: VoiceIntent["action"] = "lookup";
   if (/\b(stock in|purchase|buy|add)\b/.test(normalized)) type = "purchase";
+  if (/\b(stock out|sell|sale|sold)\b/.test(normalized)) type = "sale";
   if (/\breturn\b/.test(normalized)) type = "return";
   if (/\bdamage|damaged\b/.test(normalized)) type = "damage";
   if (/\badjust|adjustment\b/.test(normalized)) type = "adjustment";
-  return { transcript, qty: Math.max(1, qty), type, language };
+  if (/\b(stock in|stock out|purchase|buy|add|sell|sale|sold|return|damage|damaged|adjust|adjustment)\b/.test(normalized)) action = "transaction";
+  return { transcript, qty: Math.max(1, qty), type, action, language };
 }
 
 function scoreProduct(product: ProductCard, transcript: string) {
