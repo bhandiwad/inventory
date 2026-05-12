@@ -3,6 +3,7 @@
 import { use } from "react";
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
+import { isLikelyE164Phone, normalizeIndianPhone } from "@/lib/phone";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function AuthPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -18,16 +19,22 @@ export default function AuthPage({ params }: { params: Promise<{ locale: string 
       setMessage("Supabase env vars are missing. Add them to .env.local to send OTP.");
       return;
     }
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!isLikelyE164Phone(normalizedPhone)) {
+      setMessage("Enter a valid phone number, for example 9876543210 or +919876543210.");
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({ phone });
+    const { error } = await supabase.auth.signInWithOtp({ phone: normalizedPhone });
     setLoading(false);
     if (error) {
       setMessage(error.message);
       return;
     }
+    setPhone(normalizedPhone);
     setOtpSent(true);
-    setMessage("OTP sent");
+    setMessage(`OTP sent to ${normalizedPhone}`);
   }
 
   async function verifyOtp() {
@@ -35,15 +42,20 @@ export default function AuthPage({ params }: { params: Promise<{ locale: string 
       setMessage("Supabase is not configured.");
       return;
     }
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!isLikelyE164Phone(normalizedPhone)) {
+      setMessage("Enter a valid phone number, for example 9876543210 or +919876543210.");
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.verifyOtp({ phone, token: otp, type: "sms" });
+    const { error } = await supabase.auth.verifyOtp({ phone: normalizedPhone, token: otp, type: "sms" });
     if (error) {
       setLoading(false);
       setMessage(error.message);
       return;
     }
-    await supabase.rpc("accept_pending_tenant_invites", { user_phone: phone });
+    await supabase.rpc("accept_pending_tenant_invites", { user_phone: normalizedPhone });
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData.session?.user.id;
     const { data: memberships, error: membershipError } = userId

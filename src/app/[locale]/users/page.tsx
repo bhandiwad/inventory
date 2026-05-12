@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { useLocalStore } from "@/lib/localStore";
+import { isLikelyE164Phone, normalizeIndianPhone } from "@/lib/phone";
 import type { TenantRole } from "@/lib/types";
 
 export default function Users({ params }: { params: Promise<{ locale: string }> }) {
@@ -20,9 +21,14 @@ export default function Users({ params }: { params: Promise<{ locale: string }> 
 
   async function createUser() {
     if (!name.trim() || !phone.trim()) return;
+    const normalizedPhone = normalizeIndianPhone(phone);
+    if (!isLikelyE164Phone(normalizedPhone)) {
+      setMessage("Enter a valid phone number, for example 9876543210 or +919876543210.");
+      return;
+    }
     setBusy(true);
     try {
-      await addUser({ name: name.trim(), phone: phone.trim(), role });
+      await addUser({ name: name.trim(), phone: normalizedPhone, role });
       setName("");
       setPhone("");
       setRole("staff");
