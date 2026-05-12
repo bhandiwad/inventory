@@ -9,7 +9,6 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
     <Shell locale={locale}>
       <StockWorkspace
         appName={t("name")}
-        locale={locale}
         stockOutLabel={t("stockOut")}
         stockInLabel={t("stockIn")}
         searchPlaceholder={t("search")}

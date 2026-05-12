@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { AlertTriangle, BadgePlus, Minus, Plus, Search, X } from "lucide-react";
 import { ClientTime } from "@/components/ClientTime";
@@ -16,13 +15,11 @@ type StockMode = TransactionType;
 
 export function StockWorkspace({
   appName,
-  locale,
   stockOutLabel,
   stockInLabel,
   searchPlaceholder
 }: {
   appName: string;
-  locale: string;
   stockOutLabel: string;
   stockInLabel: string;
   searchPlaceholder: string;
@@ -207,29 +204,6 @@ export function StockWorkspace({
         </div>
         <OfflineBadge />
       </header>
-      {backendMode === "demo" && statusMessage ? (
-        <section className="mb-3 rounded-md border border-leaf/20 bg-white p-3 shadow-soft">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-bold">Sample data</div>
-              <p className="mt-1 text-sm text-zinc-600">Sign in to create or join a real shop.</p>
-            </div>
-            <Link href={`/${locale}/auth`} className="rounded-md bg-leaf px-3 py-2 text-sm font-semibold text-white">
-              Sign in
-            </Link>
-          </div>
-        </section>
-      ) : null}
-      {backendMode === "supabase" && !products.length && statusMessage ? (
-        <section className="mb-3 rounded-md border border-leaf/20 bg-white p-3 shadow-soft">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-zinc-700">{statusMessage}</p>
-            <Link href={`/${locale}/onboarding`} className="rounded-md bg-leaf px-3 py-2 text-sm font-semibold text-white">
-              Set up
-            </Link>
-          </div>
-        </section>
-      ) : null}
       <div className="mb-3 flex items-center justify-between gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm shadow-soft">
         <span className="text-zinc-600">Working as</span>
         {backendMode === "demo" ? (
