@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BadgePlus, ChevronLeft, ChevronRight, Pencil, Search, X } from "lucide-react";
+import { AlertTriangle, BadgePlus, ChevronLeft, ChevronRight, Pencil, Plus, Search, X } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { productMatches, useLocalStore } from "@/lib/localStore";
 import type { ProductCard } from "@/lib/types";
@@ -29,6 +29,10 @@ export default function Products({ params }: { params: Promise<{ locale: string 
   const [category, setCategory] = useState("All categories");
   const [page, setPage] = useState(1);
   const [customName, setCustomName] = useState("");
+  const [customBrand, setCustomBrand] = useState("");
+  const [customModel, setCustomModel] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
+  const [customVariant, setCustomVariant] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductCard | null>(null);
   const [draft, setDraft] = useState({
@@ -79,12 +83,38 @@ export default function Products({ params }: { params: Promise<{ locale: string 
     setMessage(null);
   }
 
+  function openCustomForm() {
+    if (currentRole === "viewer") return;
+    setCustomBrand(brand === "All brands" ? "" : brand);
+    setCustomCategory(category === "All categories" ? "" : category);
+    setShowCustom(true);
+    setMessage(null);
+  }
+
   async function createCustom() {
-    if (!customName.trim()) return;
+    const brandName = customBrand.trim() || "Universal / Generic";
+    const modelName = customModel.trim();
+    const categoryName = customCategory.trim();
+    const variantName = customVariant.trim();
+    const displayName = customName.trim() || [modelName, categoryName, variantName].filter(Boolean).join(" · ");
+    if (!displayName || !categoryName) {
+      setMessage("Add at least a product type and display name or car model.");
+      return;
+    }
     setBusy(true);
     try {
-      await addCustomProduct({ name: customName.trim(), brand: brand === "All brands" ? "Universal / Generic" : brand, category: category === "All categories" ? "LLM" : category });
+      await addCustomProduct({
+        name: displayName,
+        brand: brandName,
+        category: categoryName,
+        model: modelName || undefined,
+        variant: variantName || undefined
+      });
       setCustomName("");
+      setCustomBrand("");
+      setCustomModel("");
+      setCustomCategory("");
+      setCustomVariant("");
       setShowCustom(false);
       setMessage("Custom product is ready to use");
     } catch (error) {
@@ -120,12 +150,22 @@ export default function Products({ params }: { params: Promise<{ locale: string 
     <Shell locale={locale}>
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Inventory</h1>
-          <p className="text-sm text-zinc-600">Find products, review stock, and tune shop-level settings.</p>
+          <h1 className="text-2xl font-bold">Products</h1>
+          <p className="text-sm text-zinc-600">Browse the catalog by car brand, product type, stock, and shop labels.</p>
         </div>
-        <div className="rounded-md bg-white px-3 py-2 text-right text-sm shadow-soft">
-          <div className="font-bold">{products.length}</div>
-          <div className="text-xs text-zinc-500">products</div>
+        <div className="flex items-center gap-2">
+          <div className="rounded-md bg-white px-3 py-2 text-right text-sm shadow-soft">
+            <div className="font-bold">{products.length}</div>
+            <div className="text-xs text-zinc-500">products</div>
+          </div>
+          <button
+            className="tap-target grid min-w-12 place-items-center rounded-md bg-leaf px-3 text-white shadow-soft disabled:bg-zinc-300"
+            onClick={openCustomForm}
+            disabled={currentRole === "viewer"}
+            aria-label="Add product"
+          >
+            <Plus size={22} />
+          </button>
         </div>
       </div>
 
@@ -215,14 +255,46 @@ export default function Products({ params }: { params: Promise<{ locale: string 
         </button>
       </div>
 
-      <button className="tap-target mt-4 w-full rounded-md border border-dashed border-leaf bg-white px-4 py-3 font-semibold text-leaf disabled:border-zinc-300 disabled:text-zinc-400" onClick={() => setShowCustom((value) => !value)} disabled={currentRole === "viewer"}>
+      <button className="tap-target mt-4 w-full rounded-md border border-dashed border-leaf bg-white px-4 py-3 font-semibold text-leaf disabled:border-zinc-300 disabled:text-zinc-400" onClick={openCustomForm} disabled={currentRole === "viewer"}>
         Add custom product
       </button>
       {message ? <div className="mt-3 rounded-md bg-white p-3 text-sm shadow-soft">{message}</div> : null}
       {showCustom ? (
-        <div className="mt-3 rounded-md border bg-white p-3 shadow-soft">
-          <input className="tap-target mb-2 w-full rounded-md border px-3" placeholder="Product name" value={customName} onChange={(event) => setCustomName(event.target.value)} />
-          <button className="tap-target w-full rounded-md bg-leaf px-4 font-semibold text-white disabled:bg-zinc-300" onClick={createCustom} disabled={busy}>{busy ? "Creating..." : "Create product"}</button>
+        <div className="fixed inset-0 z-50 flex items-end bg-black/30 px-3 pb-3" role="dialog" aria-modal="true">
+          <section className="max-h-[92vh] w-full overflow-y-auto rounded-md bg-white p-4 shadow-soft">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold">Add product</h2>
+                <p className="text-sm text-zinc-600">Choose the car side first, then the accessory type and variant.</p>
+              </div>
+              <button className="rounded-md border p-2" onClick={() => setShowCustom(false)} aria-label="Close add product">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-sm font-semibold">
+                Car brand
+                <input className="tap-target rounded-md border px-3 font-normal" placeholder="Maruti" value={customBrand} onChange={(event) => setCustomBrand(event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-sm font-semibold">
+                Car model
+                <input className="tap-target rounded-md border px-3 font-normal" placeholder="Brezza" value={customModel} onChange={(event) => setCustomModel(event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-sm font-semibold">
+                Product type
+                <input className="tap-target rounded-md border px-3 font-normal" placeholder="Trunk mat" value={customCategory} onChange={(event) => setCustomCategory(event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-sm font-semibold">
+                Size / variant
+                <input className="tap-target rounded-md border px-3 font-normal" placeholder="7D, large, 2022 onwards" value={customVariant} onChange={(event) => setCustomVariant(event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-sm font-semibold">
+                Display name
+                <input className="tap-target rounded-md border px-3 font-normal" placeholder="Auto-created if left blank" value={customName} onChange={(event) => setCustomName(event.target.value)} />
+              </label>
+            </div>
+            <button className="tap-target mt-3 w-full rounded-md bg-leaf px-4 font-semibold text-white disabled:bg-zinc-300" onClick={createCustom} disabled={busy}>{busy ? "Creating..." : "Create product"}</button>
+          </section>
         </div>
       ) : null}
 

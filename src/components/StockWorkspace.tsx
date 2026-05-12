@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, BadgePlus, Minus, Plus, Search, X } from "lucide-react";
 import { ClientTime } from "@/components/ClientTime";
 import { ChatControl } from "@/components/ChatControl";
@@ -24,7 +24,7 @@ export function StockWorkspace({
   stockInLabel: string;
   searchPlaceholder: string;
 }) {
-  const { addCustomProduct, addTransaction, backendMode, confirmVoiceLog, createVoiceLog, currentRole, products, searchVoiceCandidates, setCurrentRole, statusMessage, transactions, undoTransaction } = useLocalStore();
+  const { addCustomProduct, addTransaction, confirmVoiceLog, createVoiceLog, currentRole, products, searchVoiceCandidates, transactions, undoTransaction } = useLocalStore();
   const [mode, setMode] = useState<StockMode>("sale");
   const [query, setQuery] = useState("");
   const [customOpen, setCustomOpen] = useState(false);
@@ -53,6 +53,18 @@ export function StockWorkspace({
     return productMatches(product, query);
   });
   const visibleProducts = matchingProducts.slice(0, 16);
+  const isFiltered = Boolean(query.trim()) || selectedBrand !== "All" || selectedCategory !== "All";
+  const needsAttentionProducts = useMemo(() => products
+    .filter((product) => {
+      const negative = typeof product.on_hand === "number" && product.on_hand < 0;
+      const low = typeof product.on_hand === "number" && typeof product.reorder_threshold === "number" && product.reorder_threshold > 0 && product.on_hand <= product.reorder_threshold;
+      return negative || low;
+    })
+    .slice(0, 5), [products]);
+  const highStockProducts = useMemo(() => [...products]
+    .filter((product) => typeof product.on_hand === "number" && product.on_hand > 0)
+    .sort((first, second) => (second.on_hand ?? 0) - (first.on_hand ?? 0))
+    .slice(0, 5), [products]);
   const roleCanUseMode = mode === "purchase" || mode === "sale" ? canWriteStock(currentRole) : canAdjustStock(currentRole);
   const parsedQty = Math.max(1, Number(qty) || 1);
   const maxRemovableQty = selectedProduct && typeof selectedProduct.on_hand === "number" ? Math.max(0, selectedProduct.on_hand) : null;
@@ -195,6 +207,29 @@ export function StockWorkspace({
     }
   }
 
+  function ProductButton({ product }: { product: ProductCard }) {
+    return (
+      <button
+        className="tap-target w-full rounded-lg border border-zinc-200 bg-white p-3 text-left shadow-soft transition active:scale-[0.99]"
+        onClick={() => {
+          setSelectedProduct(product);
+          setToast("");
+        }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="font-semibold">{product.display_name}</div>
+            <div className="mt-1 text-sm text-zinc-600">{product.brand_name} · {product.category_name}</div>
+          </div>
+          <div className={typeof product.on_hand === "number" && product.on_hand < 0 ? "text-right font-bold text-red-700" : "text-right font-bold text-leaf"}>
+            {product.on_hand ?? "not set"}
+            <div className="text-xs font-normal text-zinc-500">on hand</div>
+          </div>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <>
       <header className="mb-4 flex items-start justify-between gap-3">
@@ -204,22 +239,6 @@ export function StockWorkspace({
         </div>
         <OfflineBadge />
       </header>
-      <div className="mb-3 flex items-center justify-between gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm shadow-soft">
-        <span className="text-zinc-600">Working as</span>
-        {backendMode === "demo" ? (
-          <div className="flex gap-1">
-          {(["owner", "staff", "viewer"] as const).map((role) => (
-            <button
-              key={role}
-              className={`rounded px-2 py-1 text-xs font-semibold capitalize ${currentRole === role ? "bg-leaf text-white" : "bg-zinc-100 text-zinc-700"}`}
-              onClick={() => setCurrentRole(role)}
-            >
-              {role}
-            </button>
-          ))}
-          </div>
-        ) : <span className="rounded bg-leaf px-2 py-1 text-xs font-semibold capitalize text-white">{currentRole}</span>}
-      </div>
       <label className="mb-3 flex items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 py-2 shadow-soft">
         <Search size={18} />
         <input className="w-full bg-transparent outline-none" placeholder={searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} onInput={(event) => setQuery(event.currentTarget.value)} />
@@ -251,33 +270,43 @@ export function StockWorkspace({
           ))}
         </div>
       </section>
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase text-zinc-500">Products</h2>
-        <span className="text-sm text-zinc-600">{matchingProducts.length} found</span>
-      </div>
-      <div className="space-y-2">
-        {visibleProducts.map((product) => (
-          <button
-            key={product.tenant_product_id}
-            className="tap-target w-full rounded-lg border border-zinc-200 bg-white p-3 text-left shadow-soft transition active:scale-[0.99]"
-            onClick={() => {
-              setSelectedProduct(product);
-              setToast("");
-            }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="font-semibold">{product.display_name}</div>
-                <div className="mt-1 text-sm text-zinc-600">{product.brand_name} · {product.category_name}</div>
-              </div>
-              <div className={typeof product.on_hand === "number" && product.on_hand < 0 ? "text-right font-bold text-red-700" : "text-right font-bold text-leaf"}>
-                {product.on_hand ?? "not set"}
-                <div className="text-xs font-normal text-zinc-500">on hand</div>
+      {isFiltered ? (
+        <>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase text-zinc-500">Matching products</h2>
+            <span className="text-sm text-zinc-600">{matchingProducts.length} found</span>
+          </div>
+          <div className="space-y-2">
+            {visibleProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
+          </div>
+          {matchingProducts.length > visibleProducts.length ? (
+            <div className="mt-2 rounded-md bg-white px-3 py-2 text-sm text-zinc-600 shadow-soft">
+              Showing the closest 16 matches. Refine the search or use Products for the full catalog.
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <section>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-bold uppercase text-zinc-500">Quick stock checks</h2>
+            <span className="text-sm text-zinc-600">Search to find any item</span>
+          </div>
+          {needsAttentionProducts.length ? (
+            <div className="mb-4">
+              <h3 className="mb-2 text-sm font-semibold text-zinc-700">Needs attention</h3>
+              <div className="space-y-2">
+                {needsAttentionProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
               </div>
             </div>
-          </button>
-        ))}
-      </div>
+          ) : null}
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-zinc-700">Heavily stocked</h3>
+            <div className="space-y-2">
+              {highStockProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
+            </div>
+          </div>
+        </section>
+      )}
       {visibleProducts.length === 0 || customOpen ? (
         <section className="mt-4 rounded-lg border border-dashed border-leaf bg-white p-3 shadow-soft">
           <button className="tap-target mb-3 flex w-full items-center justify-center gap-2 rounded-md bg-leaf px-4 py-2 font-semibold text-white" onClick={() => setCustomOpen(true)}>
