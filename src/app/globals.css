@@ -23,3 +23,23 @@ textarea {
 .tap-target {
   min-height: 44px;
 }
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  aside,
+  nav,
+  button,
+  input,
+  textarea,
+  select {
+    display: none !important;
+  }
+
+  main,
+  section {
+    background: #ffffff !important;
+  }
+}

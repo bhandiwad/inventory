@@ -3,6 +3,7 @@
 import { use, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { Shell } from "@/components/Shell";
+import { friendlyError } from "@/lib/errors";
 import { useLocalStore } from "@/lib/localStore";
 import { isLikelyE164Phone, normalizeIndianPhone } from "@/lib/phone";
 import type { TenantRole } from "@/lib/types";
@@ -35,7 +36,7 @@ export default function Users({ params }: { params: Promise<{ locale: string }> 
       setShowAdd(false);
       setMessage("User access updated");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not update users");
+      setMessage(friendlyError(error, "Could not update users."));
     } finally {
       setBusy(false);
     }
@@ -85,7 +86,7 @@ export default function Users({ params }: { params: Promise<{ locale: string }> 
                   await updateUser(user.id, { role: event.target.value as TenantRole });
                   setMessage("Role updated");
                 } catch (error) {
-                  setMessage(error instanceof Error ? error.message : "Could not update role");
+                  setMessage(friendlyError(error, "Could not update role."));
                 } finally {
                   setBusy(false);
                 }
@@ -100,7 +101,7 @@ export default function Users({ params }: { params: Promise<{ locale: string }> 
                   await updateUser(user.id, { is_active: !user.is_active });
                   setMessage(user.is_active ? "User deactivated" : "User reactivated");
                 } catch (error) {
-                  setMessage(error instanceof Error ? error.message : "Could not update user");
+                  setMessage(friendlyError(error, "Could not update user."));
                 } finally {
                   setBusy(false);
                 }

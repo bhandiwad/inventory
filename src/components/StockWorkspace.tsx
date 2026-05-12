@@ -5,6 +5,7 @@ import { AlertTriangle, BadgePlus, Minus, Plus, Search, X } from "lucide-react";
 import { ClientTime } from "@/components/ClientTime";
 import { ChatControl } from "@/components/ChatControl";
 import { OfflineBadge } from "@/components/OfflineBadge";
+import { friendlyError } from "@/lib/errors";
 import { productMatches, useLocalStore } from "@/lib/localStore";
 import { canAdjustStock, canWriteStock } from "@/lib/permissions";
 import { parseVoiceIntent, transcribeWithSarvam } from "@/lib/voice";
@@ -81,7 +82,7 @@ export function StockWorkspace({
       setCustomName("");
       setCustomOpen(false);
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "Could not create product");
+      setToast(friendlyError(error, "Could not create product."));
     } finally {
       setBusy(false);
     }
@@ -109,7 +110,7 @@ export function StockWorkspace({
       setQty("1");
       setNote("");
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "Could not update stock");
+      setToast(friendlyError(error, "Could not update stock."));
     } finally {
       setBusy(false);
     }
@@ -201,7 +202,7 @@ export function StockWorkspace({
       setLastTransactionId(null);
       setToast("Undo saved");
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "Could not undo");
+      setToast(friendlyError(error, "Could not undo."));
     } finally {
       setBusy(false);
     }
@@ -341,7 +342,7 @@ export function StockWorkspace({
                       await undoTransaction(tx.id);
                       setToast("Undo saved");
                     } catch (error) {
-                      setToast(error instanceof Error ? error.message : "Could not undo");
+                      setToast(friendlyError(error, "Could not undo."));
                     }
                   }}>Undo</button>
                 ) : null}

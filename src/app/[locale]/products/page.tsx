@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BadgePlus, ChevronLeft, ChevronRight, Pencil, Plus, Search, X } from "lucide-react";
 import { Shell } from "@/components/Shell";
+import { friendlyError } from "@/lib/errors";
 import { productMatches, useLocalStore } from "@/lib/localStore";
 import type { ProductCard } from "@/lib/types";
 
@@ -118,7 +120,7 @@ export default function Products({ params }: { params: Promise<{ locale: string 
       setShowCustom(false);
       setMessage("Custom product is ready to use");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not create product");
+      setMessage(friendlyError(error, "Could not create product."));
     } finally {
       setBusy(false);
     }
@@ -140,7 +142,7 @@ export default function Products({ params }: { params: Promise<{ locale: string 
       setSelectedProduct(null);
       setMessage("Product updated");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not update product");
+      setMessage(friendlyError(error, "Could not update product."));
     } finally {
       setBusy(false);
     }
@@ -356,9 +358,14 @@ export default function Products({ params }: { params: Promise<{ locale: string 
             </div>
 
             {!canEdit ? <div className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">Only an owner can edit product settings.</div> : null}
-            <button className="tap-target mt-4 w-full rounded-md bg-leaf px-4 py-3 font-bold text-white disabled:bg-zinc-300" onClick={saveProduct} disabled={!canEdit || busy}>
-              {busy ? "Saving..." : "Save changes"}
-            </button>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <Link className="tap-target flex items-center justify-center rounded-md border px-4 py-3 font-bold text-ink" href={`/${locale}/products/${selectedProduct.tenant_product_id}`}>
+                View movement
+              </Link>
+              <button className="tap-target rounded-md bg-leaf px-4 py-3 font-bold text-white disabled:bg-zinc-300" onClick={saveProduct} disabled={!canEdit || busy}>
+                {busy ? "Saving..." : "Save changes"}
+              </button>
+            </div>
           </section>
         </div>
       ) : null}
