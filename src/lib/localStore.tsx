@@ -201,7 +201,7 @@ export function LocalStoreProvider({ children }: { children: ReactNode }) {
     const tenantId = membership.tenant_id as string;
     const [{ data: inventory, error: inventoryError }, { data: transactionRows, error: transactionError }, { data: memberRows }, { data: inviteRows }] = await Promise.all([
       supabase.from("tenant_inventory").select("*").eq("tenant_id", tenantId).order("brand_name").order("display_name"),
-      supabase.from("transactions").select("*").eq("tenant_id", tenantId).order("occurred_at", { ascending: false }).limit(100),
+      supabase.from("transactions").select("*").eq("tenant_id", tenantId).order("occurred_at", { ascending: false }).limit(1000),
       supabase.from("tenant_memberships").select("user_id, role, is_active, profiles(id, name, phone)").eq("tenant_id", tenantId),
       supabase.from("tenant_member_invites").select("id, phone, role, is_active").eq("tenant_id", tenantId)
     ]);
