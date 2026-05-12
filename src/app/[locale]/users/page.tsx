@@ -67,7 +67,7 @@ export default function Users({ params }: { params: Promise<{ locale: string }> 
         </section>
       ) : null}
       {message ? <div className="mb-3 rounded-md bg-white p-3 text-sm shadow-soft">{message}</div> : null}
-      <div className="space-y-2">
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {users.map((user) => {
           const soleOwnerLock = user.role === "owner" && user.is_active && ownerCount <= 1;
           return (

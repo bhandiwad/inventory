@@ -270,82 +270,86 @@ export function StockWorkspace({
           ))}
         </div>
       </section>
-      {isFiltered ? (
-        <>
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase text-zinc-500">Matching products</h2>
-            <span className="text-sm text-zinc-600">{matchingProducts.length} found</span>
-          </div>
-          <div className="space-y-2">
-            {visibleProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
-          </div>
-          {matchingProducts.length > visibleProducts.length ? (
-            <div className="mt-2 rounded-md bg-white px-3 py-2 text-sm text-zinc-600 shadow-soft">
-              Showing the closest 16 matches. Refine the search or use Products for the full catalog.
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <section>
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase text-zinc-500">Quick stock checks</h2>
-            <span className="text-sm text-zinc-600">Search to find any item</span>
-          </div>
-          {needsAttentionProducts.length ? (
-            <div className="mb-4">
-              <h3 className="mb-2 text-sm font-semibold text-zinc-700">Needs attention</h3>
-              <div className="space-y-2">
-                {needsAttentionProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+        <div>
+          {isFiltered ? (
+            <>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-bold uppercase text-zinc-500">Matching products</h2>
+                <span className="text-sm text-zinc-600">{matchingProducts.length} found</span>
               </div>
-            </div>
-          ) : null}
-          <div>
-            <h3 className="mb-2 text-sm font-semibold text-zinc-700">Heavily stocked</h3>
-            <div className="space-y-2">
-              {highStockProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
-            </div>
-          </div>
-        </section>
-      )}
-      {visibleProducts.length === 0 || customOpen ? (
-        <section className="mt-4 rounded-lg border border-dashed border-leaf bg-white p-3 shadow-soft">
-          <button className="tap-target mb-3 flex w-full items-center justify-center gap-2 rounded-md bg-leaf px-4 py-2 font-semibold text-white" onClick={() => setCustomOpen(true)}>
-            <BadgePlus size={18} /> Add custom product
-          </button>
-          {customOpen ? (
-            <div className="grid gap-2">
-              <input className="tap-target rounded-md border px-3" placeholder="Product name" value={customName} onChange={(event) => setCustomName(event.target.value)} />
-              <input className="tap-target rounded-md border px-3" placeholder="Brand" value={customBrand} onChange={(event) => setCustomBrand(event.target.value)} />
-              <input className="tap-target rounded-md border px-3" placeholder="Category" value={customCategory} onChange={(event) => setCustomCategory(event.target.value)} />
-              <button className="tap-target rounded-md bg-ink px-4 font-semibold text-white disabled:bg-zinc-300" onClick={createCustom} disabled={!canWriteStock(currentRole) || busy}>Create and use</button>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-      <section className="mt-5">
-        <h2 className="mb-2 text-lg font-bold">Recent transactions</h2>
-        <div className="space-y-2">
-          {transactions.slice(0, 5).map((tx) => (
-            <article key={tx.id} className="rounded-md border bg-white p-3 text-sm shadow-soft">
-              <div className="flex justify-between gap-3">
-                <span className="font-semibold">{tx.product_name}</span>
-                <span className={tx.qty < 0 ? "font-bold text-red-700" : "font-bold text-leaf"}>{tx.qty > 0 ? `+${tx.qty}` : tx.qty}</span>
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {visibleProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
               </div>
-              <div className="mt-1 text-zinc-600">{tx.type} · {tx.user_name} · <ClientTime value={tx.occurred_at} /></div>
-              {!tx.reverses_transaction_id && currentRole === "owner" ? (
-                <button className="mt-2 rounded-md border px-3 py-1 text-sm" onClick={async () => {
-                  try {
-                    await undoTransaction(tx.id);
-                    setToast("Undo saved");
-                  } catch (error) {
-                    setToast(error instanceof Error ? error.message : "Could not undo");
-                  }
-                }}>Undo</button>
+              {matchingProducts.length > visibleProducts.length ? (
+                <div className="mt-2 rounded-md bg-white px-3 py-2 text-sm text-zinc-600 shadow-soft">
+                  Showing the closest 16 matches. Refine the search or use Products for the full catalog.
+                </div>
               ) : null}
-            </article>
-          ))}
+            </>
+          ) : (
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-bold uppercase text-zinc-500">Quick stock checks</h2>
+                <span className="text-sm text-zinc-600">Search to find any item</span>
+              </div>
+              {needsAttentionProducts.length ? (
+                <div className="mb-4">
+                  <h3 className="mb-2 text-sm font-semibold text-zinc-700">Needs attention</h3>
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    {needsAttentionProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
+                  </div>
+                </div>
+              ) : null}
+              <div>
+                <h3 className="mb-2 text-sm font-semibold text-zinc-700">Heavily stocked</h3>
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {highStockProducts.map((product) => <ProductButton key={product.tenant_product_id} product={product} />)}
+                </div>
+              </div>
+            </section>
+          )}
+          {visibleProducts.length === 0 || customOpen ? (
+            <section className="mt-4 rounded-lg border border-dashed border-leaf bg-white p-3 shadow-soft">
+              <button className="tap-target mb-3 flex w-full items-center justify-center gap-2 rounded-md bg-leaf px-4 py-2 font-semibold text-white" onClick={() => setCustomOpen(true)}>
+                <BadgePlus size={18} /> Add custom product
+              </button>
+              {customOpen ? (
+                <div className="grid gap-2 md:grid-cols-3">
+                  <input className="tap-target rounded-md border px-3" placeholder="Product name" value={customName} onChange={(event) => setCustomName(event.target.value)} />
+                  <input className="tap-target rounded-md border px-3" placeholder="Brand" value={customBrand} onChange={(event) => setCustomBrand(event.target.value)} />
+                  <input className="tap-target rounded-md border px-3" placeholder="Category" value={customCategory} onChange={(event) => setCustomCategory(event.target.value)} />
+                  <button className="tap-target rounded-md bg-ink px-4 font-semibold text-white disabled:bg-zinc-300 md:col-span-3" onClick={createCustom} disabled={!canWriteStock(currentRole) || busy}>Create and use</button>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
         </div>
-      </section>
+        <section className="lg:sticky lg:top-6">
+          <h2 className="mb-2 text-lg font-bold">Recent transactions</h2>
+          <div className="space-y-2">
+            {transactions.slice(0, 5).map((tx) => (
+              <article key={tx.id} className="rounded-md border bg-white p-3 text-sm shadow-soft">
+                <div className="flex justify-between gap-3">
+                  <span className="font-semibold">{tx.product_name}</span>
+                  <span className={tx.qty < 0 ? "font-bold text-red-700" : "font-bold text-leaf"}>{tx.qty > 0 ? `+${tx.qty}` : tx.qty}</span>
+                </div>
+                <div className="mt-1 text-zinc-600">{tx.type} · {tx.user_name} · <ClientTime value={tx.occurred_at} /></div>
+                {!tx.reverses_transaction_id && currentRole === "owner" ? (
+                  <button className="mt-2 rounded-md border px-3 py-1 text-sm" onClick={async () => {
+                    try {
+                      await undoTransaction(tx.id);
+                      setToast("Undo saved");
+                    } catch (error) {
+                      setToast(error instanceof Error ? error.message : "Could not undo");
+                    }
+                  }}>Undo</button>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
       {toast ? (
         <div className="fixed bottom-36 left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-center justify-between rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white shadow-soft">
           <span>{toast}</span>
@@ -353,8 +357,8 @@ export function StockWorkspace({
         </div>
       ) : null}
       {voiceIntent ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/30 px-3 pb-3" role="dialog" aria-modal="true">
-          <section className="w-full rounded-lg bg-white p-4 shadow-soft">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 px-3 pb-3 lg:items-center lg:p-6" role="dialog" aria-modal="true">
+          <section className="w-full max-w-lg rounded-lg bg-white p-4 shadow-soft">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold uppercase text-leaf">{commandSource === "voice" ? "Voice match" : "Chat match"}</div>
@@ -410,8 +414,8 @@ export function StockWorkspace({
       />
       <ChatControl canUse={canWriteStock(currentRole)} onSubmit={handleChatMessage} />
       {pendingAction ? (
-        <div className="fixed inset-0 z-[60] flex items-end bg-black/30 px-3 pb-3" role="dialog" aria-modal="true">
-          <section className="w-full rounded-lg bg-white p-4 shadow-soft">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30 px-3 pb-3 lg:items-center lg:p-6" role="dialog" aria-modal="true">
+          <section className="w-full max-w-md rounded-lg bg-white p-4 shadow-soft">
             <div className="mb-3 flex items-start gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-md bg-mist text-ink">
                 <AlertTriangle size={20} />
@@ -438,8 +442,8 @@ export function StockWorkspace({
         </div>
       ) : null}
       {selectedProduct ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/30 px-3 pb-3" role="dialog" aria-modal="true">
-          <section className="w-full rounded-lg bg-white p-4 shadow-soft">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 px-3 pb-3 lg:items-center lg:p-6" role="dialog" aria-modal="true">
+          <section className="w-full max-w-lg rounded-lg bg-white p-4 shadow-soft">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold uppercase text-leaf">Update stock</div>

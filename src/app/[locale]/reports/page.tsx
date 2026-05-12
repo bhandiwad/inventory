@@ -166,7 +166,7 @@ export default function Reports({ params }: { params: Promise<{ locale: string }
         </div>
       </section>
 
-      <section className="mb-5 grid grid-cols-2 gap-2 text-sm">
+      <section className="mb-5 grid grid-cols-2 gap-2 text-sm lg:grid-cols-4">
         <div className="rounded-md border bg-white p-3 shadow-soft">
           <div className="flex items-center gap-1 text-zinc-600"><TrendingDown size={15} /> Sold / removed</div>
           <div className="mt-1 text-2xl font-bold text-red-700">{timeframe.sold}</div>
@@ -212,7 +212,7 @@ export default function Reports({ params }: { params: Promise<{ locale: string }
           </div>
           <input className="tap-target rounded-md border px-3 text-sm" type="month" value={reportMonth} onChange={(event) => setReportMonth(event.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="grid grid-cols-2 gap-2 text-sm lg:grid-cols-6">
           <div className="rounded-md bg-mist p-3">Sold <b className="text-red-700">{month.sold}</b></div>
           <div className="rounded-md bg-mist p-3">Added <b className="text-leaf">{month.added}</b></div>
           <div className="rounded-md bg-mist p-3">Net <b>{month.net > 0 ? `+${month.net}` : month.net}</b></div>
@@ -258,7 +258,7 @@ export default function Reports({ params }: { params: Promise<{ locale: string }
         </div>
       </section>
 
-      <section className="space-y-3">
+      <section className="grid gap-3 md:grid-cols-2">
         <button className="tap-target flex w-full items-center justify-center gap-2 rounded-md bg-leaf px-4 py-3 font-semibold text-white" onClick={() => exportCurrentStockTemplate(products)}>
           <Download size={18} /> Current stock export
         </button>
@@ -288,7 +288,7 @@ export default function Reports({ params }: { params: Promise<{ locale: string }
             }
           }}
         />
-        {message ? <div className="rounded-md bg-white p-3 text-sm shadow-soft">{message}</div> : null}
+        {message ? <div className="rounded-md bg-white p-3 text-sm shadow-soft md:col-span-2">{message}</div> : null}
       </section>
 
       <section className="mt-5">

@@ -174,7 +174,7 @@ export default function Products({ params }: { params: Promise<{ locale: string 
         <input className="w-full bg-transparent outline-none" placeholder="BREZZA, BREEZA, Swift mat" value={query} onChange={(event) => setQuery(event.target.value)} onInput={(event) => setQuery(event.currentTarget.value)} />
       </label>
 
-      <div className="mb-3 grid grid-cols-2 gap-2">
+      <div className="mb-3 grid grid-cols-2 gap-2 lg:max-w-3xl">
         <select className="tap-target rounded-md border bg-white px-3" value={brand} onChange={(event) => setBrand(event.target.value)}>
           {brands.map((item) => <option key={item}>{item}</option>)}
         </select>
@@ -260,8 +260,8 @@ export default function Products({ params }: { params: Promise<{ locale: string 
       </button>
       {message ? <div className="mt-3 rounded-md bg-white p-3 text-sm shadow-soft">{message}</div> : null}
       {showCustom ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/30 px-3 pb-3" role="dialog" aria-modal="true">
-          <section className="max-h-[92vh] w-full overflow-y-auto rounded-md bg-white p-4 shadow-soft">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 px-3 pb-3 lg:items-center lg:p-6" role="dialog" aria-modal="true">
+          <section className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-md bg-white p-4 shadow-soft">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold">Add product</h2>
@@ -299,8 +299,8 @@ export default function Products({ params }: { params: Promise<{ locale: string 
       ) : null}
 
       {selectedProduct ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/30 px-3 pb-3" role="dialog" aria-modal="true">
-          <section className="max-h-[92vh] w-full overflow-y-auto rounded-md bg-white p-4 shadow-soft">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 px-3 pb-3 lg:items-center lg:p-6" role="dialog" aria-modal="true">
+          <section className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-md bg-white p-4 shadow-soft">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase text-leaf"><Pencil size={15} /> Product</div>
